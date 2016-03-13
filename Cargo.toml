@@ -1,0 +1,6 @@
+[package]
+name = "hilbertmann"
+version = "0.1.0"
+authors = ["Michał Pawłowski <hilbertmann+unittestablecode at google mail>"]
+
+[dependencies]
