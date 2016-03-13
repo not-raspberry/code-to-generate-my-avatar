@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Michał Pawłowski <hilbertmann+unittestablecode at google mail>"]
 
 [dependencies]
+image = "0.7"
