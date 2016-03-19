@@ -1,3 +1,8 @@
+pub mod hilbert;
+
+#[cfg(test)]
+mod tests;
+
 extern crate image;
 
 use std::env;
