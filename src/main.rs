@@ -10,13 +10,16 @@ use image::{GenericImage, Pixel};
 
 fn main() {
     let mut args = env::args();
-    let exec_name = args.next().unwrap();
-    let name_arg = args.next();
+    let name_arg = args.nth(1);
 
     if let Some(name) = name_arg {
         print_pixels(&name)
     } else {
-        println!("Invocation: $ {} <filename>", exec_name);
+        for i in 1..4 {
+            println!("Order: {}", i);
+            hilbert::parse_rule(&hilbert::RULE_A, i);
+            println!("");
+        }
     };
 }
 
