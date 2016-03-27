@@ -15,11 +15,7 @@ fn main() {
     if let Some(name) = name_arg {
         print_pixels(&name)
     } else {
-        for i in 1..4 {
-            println!("Order: {}", i);
-            hilbert::parse_rule(&hilbert::RULE_A, i);
-            println!("");
-        }
+        hilbert::hilbert_pixels()
     };
 }
 
