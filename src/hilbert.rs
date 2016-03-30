@@ -1,3 +1,7 @@
+use std::fs::OpenOptions;
+use image::{DynamicImage, GenericImage, Rgba, ImageFormat};
+
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Turn {
     Right,
@@ -73,6 +77,7 @@ pub const RULE_B: Rule = [
     Move(Movement::Turn(Turn::Right)),
 ];
 
+/// Iterator over turtle graphics commands for the hilbert curve.
 pub struct HilbertCurvePath {
     rules_stack: Vec<(Rule, usize)>,
     max_depth: usize
@@ -82,7 +87,7 @@ impl HilbertCurvePath {
     pub fn new(order: usize) -> HilbertCurvePath {
         HilbertCurvePath {
             rules_stack: vec![(RULE_A, 0)],
-            max_depth: order
+            max_depth: order - 1
         }
     }
 }
@@ -140,35 +145,88 @@ pub fn turn(prev_direction: Direction, turn: Turn) -> Direction {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct Pos { x: i32, y: i32 }
+pub struct Position { x: u32, y: u32 }
 
-pub fn move_forward(previous_position: Pos, direction: Direction) -> Pos {
-    let Pos { x, y } = previous_position;
+pub fn move_forward(previous_position: Position, direction: Direction) -> Position {
+    let Position { x, y } = previous_position;
     // 0 ---→
     // |   +x
     // |
     // ↓ +y
     match direction {
-        Up => Pos { x: x, y: y - 1 },
-        Right => Pos { x: x + 1, y: y },
-        Down => Pos { x: x, y: y + 1 },
-        Left => Pos { x: x - 1, y: y },
+        Up => Position { x: x, y: y - 1 },
+        Right => Position { x: x + 1, y: y },
+        Down => Position { x: x, y: y + 1 },
+        Left => Position { x: x - 1, y: y },
     }
 }
 
-pub fn hilbert_pixels() {
-    let mut position = Pos { x: 0, y: 0 };
-    let mut direction = Down;
+/// Iterator over hilbert curve pixels for bitmaps of 2ⁿ ☓ 2ⁿ pixels.
+pub struct HilbertCurvePixels {
+    position: Position,
+    direction: Direction,
+    path: HilbertCurvePath
+}
 
-    for symbol in HilbertCurvePath::new(3) {
-        match symbol {
-            Movement::Turn(turn_dir) => {
-                direction = turn(direction, turn_dir);
-            }
-            Movement::Forward => {
-                position = move_forward(position, direction);
-                println!("{:?}", position);
+impl HilbertCurvePixels {
+    pub fn new(power: u32) -> HilbertCurvePixels {
+        HilbertCurvePixels {
+            position: Position { x: 0, y: 0 },
+            direction: Down,
+            path: HilbertCurvePath::new(power as usize)
+        }
+    }
+}
+
+impl Iterator for HilbertCurvePixels {
+    type Item = Position;
+
+    fn next(&mut self) -> Option<Position> {
+        let current_position = self.position;
+
+        // Update the next position.
+        match self.path.next() {
+            Some(movement) => {
+                match movement {
+                    Movement::Turn(turn_dir) => {
+                        self.direction = turn(self.direction, turn_dir);
+                        self.next()
+                    }
+                    Movement::Forward => {
+                        self.position = move_forward(self.position, self.direction);
+                        Some(current_position)
+                    }
+
+                }
+            },
+            None => {
+                // All movements were consumed but we also need to draw the last pixel.
+                // Since the wrapped iterator is over at this point, we have to distinguish between
+                // the first None returned by the HilbertCurvePath iterator, in which case we have
+                // to put the last pixel, and the following Nones, when we have to return None.
+
+                // We set the position in self to a position in which the Hilbert curve can never
+                // end (they always start and end in a corner, regardless of their orientation; the
+                // corner is always at 2ⁿ-1 ☓ 2ⁿ-1, where n is a natural number, incl. zero).
+                let illegal_ending_position = Position { x: 2, y: 2 }; 
+                self.position = illegal_ending_position;
+                if current_position != illegal_ending_position {
+                    Some(current_position)  // Last pixel.
+                } else {
+                    None  // The last pixel already put - stop the iteration.
+                }
             }
         }
     }
+}
+
+pub fn hilbert_pixels(destination: String) {
+    let mut image = DynamicImage::new_rgb8(16, 16);
+
+    for (index, position) in HilbertCurvePixels::new(4).enumerate() {
+        let color = index as u8;
+        image.put_pixel(position.x, position.y, Rgba([227, 11, color, 255]));
+    }
+    let mut dest = OpenOptions::new().write(true).create(true).truncate(true).open(destination).unwrap();
+    image.save(&mut dest, ImageFormat::PNG).unwrap();
 }
