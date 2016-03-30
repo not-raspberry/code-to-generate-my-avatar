@@ -1,7 +1,7 @@
 [package]
-name = "hilbertmann"
+name = "hilbertman"
 version = "0.1.0"
-authors = ["Michał Pawłowski <hilbertmann+unittestablecode at google mail>"]
+authors = ["Michał Pawłowski <hilbertman+unittestablecode at google mail>"]
 
 [dependencies]
 image = "0.7"
