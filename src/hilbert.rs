@@ -220,12 +220,35 @@ impl Iterator for HilbertCurvePixels {
     }
 }
 
-pub fn hilbert_pixels(destination: String) {
-    let mut image = DynamicImage::new_rgb8(16, 16);
+fn blend(c1: Rgba<u8>, c2: Rgba<u8>, ratio: f32) -> Rgba<u8> {
+    assert!(0.0 <= ratio);
+    assert!(ratio <= 1.0);
+    let c1_strength = ratio;
+    let c2_strength = 1.0 - c1_strength;
 
-    for (index, position) in HilbertCurvePixels::new(4).enumerate() {
-        let color = index as u8;
-        image.put_pixel(position.x, position.y, Rgba([227, 11, color, 255]));
+    let avg = |a, b| (a as f32 * c1_strength  + b as f32 * c2_strength) as u8;
+
+    Rgba(
+        [avg(c1.data[0], c2.data[0]),
+         avg(c1.data[1], c2.data[1]),
+         avg(c1.data[2], c2.data[2]),
+         avg(c1.data[3], c2.data[3])]
+    )
+}
+
+pub fn hilbert_pixels(destination: String) {
+    let order: u32 = 8;
+    let size: u32  = 2u32.pow(order);
+    let pixels_count = size * size;
+    let mut image = DynamicImage::new_rgb8(size, size);
+    let (initial_color, final_color) = (Rgba([0xe3, 0x0b, 0x5d, 0xff]),
+                                        Rgba([0x0, 0x0, 0x0, 0x0]));
+
+    for (index, position) in HilbertCurvePixels::new(order).enumerate() {
+        let blend_ratio = index as f32 / pixels_count as f32;
+        let color = blend(initial_color, final_color, blend_ratio);
+        println!("{:?}", color);
+        image.put_pixel(position.x, position.y, color);
     }
     let mut dest = OpenOptions::new().write(true).create(true).truncate(true).open(destination).unwrap();
     image.save(&mut dest, ImageFormat::PNG).unwrap();
