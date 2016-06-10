@@ -1,21 +1,25 @@
-use std::fs::OpenOptions;
-use image::{DynamicImage, GenericImage, Rgba, ImageFormat};
+/// Hilbert curve path generation using a Lindenmayer system.
+/// https://en.wikipedia.org/wiki/Hilbert_curve#Representation_as_Lindenmayer_system
 
 
+/// A Lindenmayer system rule (set of movements or 'calls' to another rule).
+pub type Rule = [Symbol; 11];
+
+/// Turn instruction.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Turn {
     Right,
     Left,
 }
 
+/// Movement instruction.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Movement {
     Turn(Turn),
     Forward
 }
 
-pub type Rule = [Symbol; 11];
-
+/// Sub-rule invocation instruction.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Invocation {
     A,
@@ -32,6 +36,7 @@ impl Invocation {
 }
 
 
+/// An element of a L-system rule - single instruction.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Symbol {
     Move(Movement),
@@ -39,7 +44,7 @@ pub enum Symbol {
 }
 use self::Symbol::*;
 
-
+/// Direction the turtle is facing.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Direction {
     Up,
@@ -83,6 +88,8 @@ pub struct HilbertCurvePath {
     max_depth: usize
 }
 
+/// An 'interpreter' of the L-system rules RULE_A and RULE_B that yields
+/// consecutive movements the turtle has to make to draw a hilbert curve.
 impl HilbertCurvePath {
     pub fn new(order: usize) -> HilbertCurvePath {
         HilbertCurvePath {
@@ -145,7 +152,7 @@ pub fn turn(prev_direction: Direction, turn: Turn) -> Direction {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct Position { x: u32, y: u32 }
+pub struct Position { pub x: u32, pub y: u32 }
 
 pub fn move_forward(previous_position: Position, direction: Direction) -> Position {
     let Position { x, y } = previous_position;
@@ -218,38 +225,4 @@ impl Iterator for HilbertCurvePixels {
             }
         }
     }
-}
-
-fn blend(c1: Rgba<u8>, c2: Rgba<u8>, ratio: f32) -> Rgba<u8> {
-    assert!(0.0 <= ratio);
-    assert!(ratio <= 1.0);
-    let c1_strength = ratio;
-    let c2_strength = 1.0 - c1_strength;
-
-    let avg = |a, b| (a as f32 * c1_strength  + b as f32 * c2_strength) as u8;
-
-    Rgba(
-        [avg(c1.data[0], c2.data[0]),
-         avg(c1.data[1], c2.data[1]),
-         avg(c1.data[2], c2.data[2]),
-         avg(c1.data[3], c2.data[3])]
-    )
-}
-
-pub fn hilbert_pixels(destination: String) {
-    let order: u32 = 8;
-    let size: u32  = 2u32.pow(order);
-    let pixels_count = size * size;
-    let mut image = DynamicImage::new_rgb8(size, size);
-    let (initial_color, final_color) = (Rgba([0xe3, 0x0b, 0x5d, 0xff]),
-                                        Rgba([0x0, 0x0, 0x0, 0x0]));
-
-    for (index, position) in HilbertCurvePixels::new(order).enumerate() {
-        let blend_ratio = index as f32 / pixels_count as f32;
-        let color = blend(initial_color, final_color, blend_ratio);
-        println!("{:?}", color);
-        image.put_pixel(position.x, position.y, color);
-    }
-    let mut dest = OpenOptions::new().write(true).create(true).truncate(true).open(destination).unwrap();
-    image.save(&mut dest, ImageFormat::PNG).unwrap();
 }
